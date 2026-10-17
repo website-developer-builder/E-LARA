@@ -41,7 +41,8 @@ This generates JPG/PNG/HEIC/TIFF images (including a 8000×3000 panorama, duplic
 | **Sidebar** | Home · All Media · Photos · Videos · Music · Favorites · Settings, with item counts. The bottom shows "N folders · N items", scan progress with **Cancel**, and any folder that needs attention. |
 | **Toolbar** | Add Folder · Rescan · Sort · Grid/List · Info · Search |
 | **Cards** | Click to select · double-click (or Return) to open or play · right-click for Open/Play, Favorite, Show in Finder, Get Info. There is no Delete, by design. |
-| **Viewer** | Photos fit the window, pinch or double-click to zoom, ← → for previous/next, Esc to go back. Videos use the standard macOS player controls. |
+| **Quick View** | Select anything and **tap Space** for a floating preview: photos show, videos and songs start playing. **Arrow keys** move to the next or previous item of any type, and the preview follows. Tap Space or Esc to close. **Hold Space** to peek: the preview shows while held and closes on release. Works in the grid, the list, and Home. Previews don't count as "played". |
+| **Viewer** | Double-click or Return. Photos fit the window, pinch or double-click to zoom, ← → for previous/next (photos, videos, and songs), Esc to go back. Videos use the standard macOS player controls. |
 | **Mini-player** | Music keeps playing while you browse: play/pause, previous/next, seek, volume. |
 | **Drag & drop** | Drop folders from Finder onto the window to add them. |
 
@@ -54,9 +55,12 @@ This generates JPG/PNG/HEIC/TIFF images (including a 8000×3000 panorama, duplic
 | ⌘1 … ⌘6 | Home, All Media, Photos, Videos, Music, Favorites |
 | ⌘, | Settings |
 | ⌘I | Show or hide details |
-| Arrows / Return | Move the selection in the grid / open it |
-| Space | Play/pause music (when the grid has focus) |
-| ⌘P | Play/pause (Controls menu, works anywhere) |
+| Space (tap) | Quick View the selected item; tap again to close |
+| Space (hold) | Peek: preview while held, closes on release |
+| ← → ↑ ↓ | Move the selection (and Quick View) through photos, videos, and songs |
+| Return | Open the selected item in the full viewer / music player |
+| Esc | Close Quick View or the viewer |
+| ⌘P | Play/pause music (Controls menu, works anywhere) |
 | ⌥⌘→ / ⌥⌘← | Next / previous song |
 | ⌘L | Add to / remove from Favorites |
 | ⇧⌘R | Show in Finder |
@@ -91,13 +95,13 @@ MediaHub/
 ├── MediaHub.xcodeproj           (shared scheme: MediaHub)
 ├── MediaHub/
 │   ├── App/        MediaHubApp (window + menus), AppModel (state, scanning), AppConfig, WindowHelpers
-│   ├── Models/     MediaType, MediaItem, LibraryFolder, LibraryQuery (filter/sort/search)
+│   ├── Models/     MediaType, MediaItem, LibraryFolder, LibraryQuery (filter/sort/search), SpacebarPeek
 │   ├── Services/   Database (SQLite), LibraryStore (actor), MediaScanner, MetadataService,
 │   │               FolderAccess (sandbox bookmarks), ThumbnailService, PlaybackController
 │   ├── Views/      ContentView, SidebarView, HomeView, LibraryView, MediaCardView, DetailsView,
-│   │               MediaViewer, VideoContainerView, MiniPlayerView, SettingsView, EmptyStates
+│   │               MediaViewer, QuickView, VideoContainerView, MiniPlayerView, SettingsView, EmptyStates
 │   └── Resources/  Assets (app icon), MediaHub.entitlements
-├── MediaHubTests/  39 unit + integration tests
+├── MediaHubTests/  51 unit + integration tests
 ├── scripts/        build.sh, test.sh, release.sh, make_fixtures.sh, MakeFixtures.swift, MakeIcon.swift
 └── TestFixtures/   generated sample media (git-ignored)
 ```
@@ -106,7 +110,7 @@ MediaHub/
 
 ## Tests
 
-`scripts/test.sh` runs 39 XCTest cases inside the sandboxed app:
+`scripts/test.sh` runs 51 XCTest cases inside the sandboxed app:
 
 | Suite | Covers |
 |---|---|
@@ -117,8 +121,9 @@ MediaHub/
 | `PlaybackTests` | Real AVPlayer: queue, play/pause, next/previous, auto-advance at the end, play history, missing file error, corrupt file error |
 | `ReliabilityTests` | Drive eject/reconnect, cancelled rescan doesn't delete, 5,000-file scan timing, 50,000-item search/sort timing |
 | `FormatTests` | Generates each format and checks classification, metadata, thumbnail, and playability |
+| `QuickViewTests` | Space tap vs. hold (peek) timing, repeat handling, arrow movement/clamping, Quick View following the selection across photo → video → song, closing on section change |
 
-**Last run: 39 tests, 0 failures** (macOS 26.6, Xcode 26.6). Measured: 5,000-file scan 0.63 s (small synthetic files), unchanged rescan 0.15 s, 50k-item search+sort 0.17 s.
+**Last run: 51 tests, 0 failures** (macOS 26.6, Xcode 26.6). Measured: 5,000-file scan 0.63 s (small synthetic files), unchanged rescan 0.15 s, 50k-item search+sort 0.17 s.
 
 ### Formats actually verified
 | Kind | Verified | How |
@@ -146,6 +151,7 @@ What was actually exercised in the running app during development:
 - [x] Double-click a photo → viewer; → goes to the next photo; Esc returns to the library with the selection kept
 - [x] Open a video → plays in-app with standard controls (after fixing the `VideoPlayer` crash described above)
 - [x] Play a song → mini-player appears; Controls ▸ Pause works; the player stays visible on Home; Recently Played appears
+- [x] Quick View (v0.2): tap Space opens and stays open; → moves photo → video (plays); tap Space closes; holding Space for 2 s opened and closed on release (confirmed in the app's log); list view: Space previews a song, ↑ ↓ ← → move; Home: Space + → work; Esc closes
 - [x] Light and Dark appearance (Light checked by forcing the app's appearance)
 - [x] Settings: folder list with status and item count, Rescan / Remove… / Add Folder, supported formats, thumbnail cache size and clear, privacy notes, version
 
@@ -160,7 +166,7 @@ What was actually exercised in the running app during development:
 - **No automatic watching.** New files appear after **Rescan** (⌘R) or the next launch for unfinished folders. FSEvents monitoring is a future step.
 - **Apple Photos libraries** (`.photoslibrary`) are packages and are intentionally not scanned.
 - **Duplicates:** the same file reached through two selected folders appears once. Identical copies at different paths appear separately (no content hashing).
-- **Grid keyboard navigation** needs the grid focused (click it once). VoiceOver activates a card's default action (open/play).
+- **Keyboard shortcuts** (Space, arrows) work once the library has focus: clicking any item gives it focus. If you click inside a playing video's controls, Space controls that video instead. VoiceOver activates a card's default action (open/play).
 - Playback position isn't remembered between sessions (only "last played" and play count).
 - Placeholder app icon.
 
@@ -175,4 +181,5 @@ What was actually exercised in the running app during development:
 | 3 Grid & details | `Services/ThumbnailService.swift`, `Views/DetailsView.swift`; thumbnails, context menu, Show in Finder, cache settings; `ThumbnailTests.swift` |
 | 4 Playback | `Services/PlaybackController.swift`, `Views/MediaViewer.swift`, `VideoContainerView.swift`, `MiniPlayerView.swift`; Controls menu; grid keyboard navigation; `PlaybackTests.swift` |
 | 5 Reliability | `App/WindowHelpers.swift` (⌘F); drive mount/unmount, drag & drop, memoized results, VoiceOver hiding behind the viewer; `ReliabilityTests.swift`, `FormatTests.swift` |
-| 6 Packaging | App icon (`scripts/MakeIcon.swift`), `scripts/release.sh`, `.gitignore`, this README. Version **0.1.0 (1)** in the project's `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`. |
+| 6 Packaging | App icon (`scripts/MakeIcon.swift`), `scripts/release.sh`, `.gitignore`, this README. Version in the project's `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`. |
+| 0.2.0 Quick View | `Models/SpacebarPeek.swift` (tap/hold logic, arrow movement), `Views/QuickView.swift` (overlay, audio preview, shared keyboard handling); viewer now steps through songs too; `QuickViewTests.swift`. Version **0.2.0 (2)**. |

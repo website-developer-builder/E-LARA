@@ -6,6 +6,7 @@ MediaHub is a free, native Mac app that brings the photos, videos, and music sca
 
 - 🖼️ **One gallery** for photos, videos, and music, with thumbnails
 - 🔎 **Instant search** by filename across everything
+- ⎵ **Quick View**: select anything and press **Space** to preview it instantly (hold Space to peek), and use the **arrow keys** to flip through photos, videos, and songs
 - ▶️ **Built-in viewer and players**: photo viewer with zoom, video player, music mini-player that keeps playing while you browse
 - ❤️ **Favorites**, Recently Added, and Recently Played
 - 🔒 **Private by design**: no account, no cloud, no tracking. MediaHub only *reads* the folders you choose and never moves, renames, or deletes your files.
@@ -16,7 +17,7 @@ Requires **macOS 14 Sonoma or later**. Runs natively on Apple Silicon and Intel 
 
 ## Download & install
 
-1. Download **`MediaHub-0.1.0.zip`** from the [latest release](../../releases/latest).
+1. Download **`MediaHub-0.2.0.zip`** from the [latest release](../../releases/latest).
 2. Double-click the zip to unzip it, then drag **MediaHub.app** into your **Applications** folder.
 3. Open it. The first time, macOS will warn you, because this free app isn't signed with a paid Apple Developer ID:
    - **macOS 15 Sequoia and later:** click **Done** on the warning, then open **System Settings ▸ Privacy & Security**, scroll down, and click **Open Anyway** next to "MediaHub". Confirm, and enter your password if asked.
@@ -34,6 +35,7 @@ Requires **macOS 14 Sonoma or later**. Runs natively on Apple Silicon and Intel 
 | **Add folders** | Choose Folders… on first launch, ⌘O, or drag folders onto the window |
 | **Browse** | Sidebar: Home · All Media · Photos · Videos · Music · Favorites |
 | **Search** | ⌘F, then type part of a filename |
+| **Quick View** | Select an item and tap **Space** to preview; **← → ↑ ↓** to move between items; Space or Esc to close. Hold Space to peek |
 | **Open / play** | Double-click, or select and press Return |
 | **Details** | ⌘I shows size, dates, dimensions, duration, and location, plus **Show in Finder** |
 | **Update** | ⌘R rescans your folders for new or changed files |
@@ -50,7 +52,7 @@ git clone https://github.com/website-developer-builder/MediaHub.git
 cd MediaHub/MediaHub
 open MediaHub.xcodeproj      # then press ⌘R in Xcode
 ```
-Or from Terminal: `scripts/release.sh`, then `open dist/MediaHub.app`. Run the 39 tests with `scripts/test.sh`.
+Or from Terminal: `scripts/release.sh`, then `open dist/MediaHub.app`. Run the 51 tests with `scripts/test.sh`.
 
 Technical details (architecture, sandbox and folder-permission design, tests, known limitations): **[MediaHub/README.md](MediaHub/README.md)**.
 

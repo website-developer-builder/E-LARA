@@ -20,6 +20,8 @@ struct MediaViewer: View {
                                     : item.availability.userDescription)
                 } else if item.mediaType == .video {
                     VideoPlayerView(item: item)
+                } else if item.mediaType == .audio {
+                    AudioPreviewView(item: item, onDark: true)
                 } else {
                     PhotoView(item: item)
                 }
@@ -85,6 +87,8 @@ struct ViewerBar: View {
 /// Photo shown fit-to-window. Pinch or double-click to zoom; drag to pan when zoomed.
 struct PhotoView: View {
     let item: MediaItem
+    /// Decode size cap. The full viewer uses 4096 px; Quick View uses less so ← → stays snappy.
+    var maxPixelSize = 4096
     @State private var image: NSImage?
     @State private var failed = false
     @State private var scale: CGFloat = 1
@@ -121,6 +125,9 @@ struct PhotoView: View {
             } else if failed {
                 ViewerMessage(icon: "photo.badge.exclamationmark", title: "This photo can't be shown",
                               message: "“\(item.fileName)” may be damaged or in a format macOS can't read.")
+            } else if let thumb = ThumbnailService.shared.cachedThumbnail(for: item) {
+                // Show the grid thumbnail instantly while the sharper version loads.
+                Image(nsImage: thumb).resizable().scaledToFit()
             } else {
                 ProgressView().controlSize(.large).tint(.white)
             }
@@ -130,10 +137,11 @@ struct PhotoView: View {
         .task {
             // Decode off the main thread, capped at a size that fills big screens without
             // loading a 100-megapixel original into memory.
-            let url = item.url
+            let url = item.url, size = maxPixelSize
             let cg = await Task.detached(priority: .userInitiated) {
-                ThumbnailService.imageThumbnail(url: url, maxPixelSize: 4096)
+                ThumbnailService.imageThumbnail(url: url, maxPixelSize: size)
             }.value
+            if Task.isCancelled { return }
             if let cg { image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height)) } else { failed = true }
         }
     }
@@ -143,6 +151,8 @@ struct PhotoView: View {
 struct VideoPlayerView: View {
     @Environment(AppModel.self) private var model
     let item: MediaItem
+    /// Quick View previews don't count as "played" (keeps Recently Played stable while browsing).
+    var recordsPlay = true
     @State private var player: AVPlayer?
     @State private var failed = false
     @State private var statusObservation: NSKeyValueObservation?
@@ -164,7 +174,7 @@ struct VideoPlayerView: View {
             self.player = player
             model.playback.pause() // Don't play music over the video.
             player.play()          // User explicitly opened it.
-            model.recordPlay(item)
+            if recordsPlay { model.recordPlay(item) }
         }
         .onDisappear {
             // Release the player as soon as the viewer closes or moves on.
@@ -199,13 +209,14 @@ struct ViewerMessage: View {
     let icon: String
     let title: String
     let message: String
+    var onClose: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: icon).font(.system(size: 40))
             Text(title).font(.title2.weight(.semibold))
             Text(message).multilineTextAlignment(.center).frame(maxWidth: 420)
-            Button("Back to Library") { model.closeViewer() }
+            Button("Back to Library") { (onClose ?? model.closeViewer)() }
         }
         .foregroundStyle(.white)
         .padding()

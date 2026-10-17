@@ -1,4 +1,7 @@
+import OSLog
 import SwiftUI
+
+private let uiLog = Logger(subsystem: "com.example.MediaHub", category: "ui")
 
 /// Progress of the scan that is currently running.
 struct ScanProgress: Equatable {
@@ -34,7 +37,7 @@ struct AppAlert: Identifiable {
 @MainActor
 final class AppModel {
     // MARK: Navigation & view options (remembered between launches)
-    var section: SidebarSection = .home { didSet { Preferences.section = section } }
+    var section: SidebarSection = .home { didSet { Preferences.section = section; closeQuickView() } }
     var sort: LibrarySort = .dateAddedNewest { didSet { Preferences.sort = sort } }
     var viewMode: ViewMode = .grid { didSet { Preferences.viewMode = viewMode } }
     var searchText = ""
@@ -73,6 +76,14 @@ final class AppModel {
     var viewerItemID: MediaItem.ID?
     /// The results the viewer was opened from, for ← → navigation.
     private var viewerList: [MediaItem.ID] = []
+
+    /// Quick View (Space) shows the selected item in a floating preview over the library.
+    var isQuickViewOpen = false {
+        didSet { if oldValue != isQuickViewOpen { uiLog.debug("Quick View \(self.isQuickViewOpen ? "opened" : "closed", privacy: .public)") } }
+    }
+    /// The items Quick View was opened from, for the "3 of 120" counter.
+    private(set) var quickViewList: [MediaItem.ID] = []
+    @ObservationIgnored private var spacebar = SpacebarPeek()
 
     private var store: LibraryStore?
     private let access = FolderAccess()
@@ -416,10 +427,12 @@ final class AppModel {
             closeViewer()
             playback.play(item, queue: visible.filter { $0.mediaType == .audio && $0.isAvailable })
         case .image, .video:
-            viewerList = visible.filter { $0.mediaType != .audio }.map(\.id)
+            // ← → in the viewer step through everything shown, songs included.
+            viewerList = visible.map(\.id)
             if !viewerList.contains(item.id) { viewerList = [item.id] }
             viewerItemID = item.id
         }
+        closeQuickView()
     }
 
     var viewerItem: MediaItem? {
@@ -442,6 +455,58 @@ final class AppModel {
 
     func closeViewer() {
         viewerItemID = nil
+    }
+
+    // MARK: Quick View
+
+    var quickViewItem: MediaItem? { isQuickViewOpen ? selectedItem : nil }
+
+    var quickViewPosition: (index: Int, count: Int)? {
+        guard let id = selectedItemID, let i = quickViewList.firstIndex(of: id) else { return nil }
+        return (i, quickViewList.count)
+    }
+
+    func openQuickView(in items: [MediaItem]) {
+        if selectedItem == nil, let first = items.first { selectedItemID = first.id }
+        guard selectedItem != nil else { return }
+        quickViewList = items.map(\.id)
+        isQuickViewOpen = true
+    }
+
+    func closeQuickView() {
+        isQuickViewOpen = false
+        spacebar.reset()
+    }
+
+    /// Space pressed or released over a list of items. Returns true if it was handled.
+    /// Tap = toggle Quick View; hold = peek until release. With nothing to preview,
+    /// Space falls back to play/pause for music that's already loaded.
+    func handleSpace(down: Bool, in items: [MediaItem], at time: Date = Date()) -> Bool {
+        if down {
+            if !isQuickViewOpen && selectedItem == nil && items.isEmpty {
+                guard playback.current != nil else { return false }
+                playback.togglePlayPause()
+                return true
+            }
+            switch spacebar.keyDown(isOpen: isQuickViewOpen, at: time) {
+            case .open: openQuickView(in: items)
+            case .close: isQuickViewOpen = false
+            case .none: break
+            }
+        } else if spacebar.keyUp(isOpen: isQuickViewOpen, at: time) == .close {
+            isQuickViewOpen = false
+        }
+        return true
+    }
+
+    /// Arrow keys: moves the selection (and Quick View, if open) through `items`.
+    @discardableResult
+    func moveSelection(by step: Int, in items: [MediaItem]) -> MediaItem.ID? {
+        let current = items.firstIndex { $0.id == selectedItemID }
+        guard let next = SelectionMover.index(from: current, step: step, count: items.count) else { return nil }
+        selectedItemID = items[next].id
+        if isQuickViewOpen, !quickViewList.contains(items[next].id) { quickViewList = items.map(\.id) }
+        return selectedItemID
     }
 
     /// Reveals the original file in Finder, or explains why it can't.

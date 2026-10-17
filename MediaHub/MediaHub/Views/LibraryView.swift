@@ -50,7 +50,7 @@ struct SectionHeader: View {
 }
 
 /// Lazy thumbnail grid — only visible cards are created.
-/// Keyboard: arrows move the selection, Return opens, Space plays/pauses music.
+/// Keyboard: arrows move the selection, Return opens, Space = Quick View (hold to peek).
 struct MediaGridView: View {
     @Environment(AppModel.self) private var model
     let items: [MediaItem]
@@ -73,38 +73,11 @@ struct MediaGridView: View {
                     }
                     .padding(padding)
                 }
-                .focusable()
-                .focusEffectDisabled()
-                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
-                    let step: Int = switch press.key {
-                    case .leftArrow: -1
-                    case .rightArrow: 1
-                    case .upArrow: -columnCount
-                    default: columnCount
-                    }
-                    moveSelection(by: step, proxy: proxy)
-                    return .handled
-                }
-                .onKeyPress(.return) {
-                    guard let item = model.selectedItem else { return .ignored }
-                    model.open(item)
-                    return .handled
-                }
-                .onKeyPress(.space) {
-                    guard model.playback.current != nil else { return .ignored }
-                    model.playback.togglePlayPause()
-                    return .handled
+                .mediaKeyboard(items: items, verticalStep: columnCount) { id in
+                    withAnimation(.easeInOut(duration: 0.15)) { proxy.scrollTo(id) }
                 }
             }
         }
-    }
-
-    private func moveSelection(by step: Int, proxy: ScrollViewProxy) {
-        guard !items.isEmpty else { return }
-        let current = items.firstIndex { $0.id == model.selectedItemID }
-        let next = current.map { min(max($0 + step, 0), items.count - 1) } ?? 0
-        model.selectedItemID = items[next].id
-        proxy.scrollTo(items[next].id)
     }
 }
 
@@ -125,6 +98,9 @@ struct MediaListView: View {
             }
         }
         .listStyle(.inset(alternatesRowBackgrounds: true))
+        // List already moves the selection with ↑ ↓ and has its own focus;
+        // add ← → (previous/next), Space (Quick View), Return, and Esc.
+        .mediaKeyboard(items: items, verticalStep: nil, makeFocusable: false)
         .contextMenu(forSelectionType: MediaItem.ID.self) { ids in
             if let id = ids.first, let item = items.first(where: { $0.id == id }) {
                 MediaContextMenu(item: item)

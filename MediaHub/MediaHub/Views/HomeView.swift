@@ -15,19 +15,24 @@ struct HomeView: View {
                 Button("Add Folder…") { model.addFolders() }
             }
         } else {
+            let played = LibraryQuery.recentlyPlayed(model.items)
+            let added = LibraryQuery.recentlyAdded(model.items)
+            let playedIDs = Set(played.map(\.id))
+            // Arrow keys walk Recently Played, then Recently Added (each item once).
+            let keyboardItems = played + added.filter { !playedIDs.contains($0.id) }
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     Text("Your library")
                         .font(.largeTitle.weight(.semibold))
                     QuickAccessRow()
-                    let played = LibraryQuery.recentlyPlayed(model.items)
                     if !played.isEmpty {
                         HomeShelf(title: "Recently Played", items: played)
                     }
-                    HomeShelf(title: "Recently Added", items: LibraryQuery.recentlyAdded(model.items))
+                    HomeShelf(title: "Recently Added", items: added)
                 }
                 .padding(24)
             }
+            .mediaKeyboard(items: keyboardItems)
         }
     }
 }

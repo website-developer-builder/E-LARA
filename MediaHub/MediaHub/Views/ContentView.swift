@@ -65,6 +65,14 @@ struct DetailView: View {
         // While the viewer is open, VoiceOver should only see the viewer.
         .accessibilityHidden(model.viewerItem != nil)
         .overlay {
+            if let item = model.quickViewItem, model.viewerItem == nil {
+                QuickViewOverlay(item: item)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: model.isQuickViewOpen)
+        .onChange(of: model.searchText) { model.closeQuickView() }
+        .overlay {
             if let item = model.viewerItem {
                 MediaViewer(item: item)
                     .transition(.opacity)
