@@ -509,10 +509,46 @@ final class AppModel {
         return selectedItemID
     }
 
-    /// Reveals the original file in Finder, or explains why it can't.
+    /// What "Show in Finder" can reveal for a file.
+    enum FinderTarget: Equatable {
+        /// The file is there: reveal and select it.
+        case file(String)
+        /// The file is gone but the folder it was in (or the nearest one above it, inside the
+        /// library folder) still exists: open that folder.
+        case formerFolder(String)
+        /// Nothing to show, e.g. the drive is disconnected or the library folder itself is gone.
+        case unavailable
+    }
+
+    nonisolated static func finderTarget(forFileAt path: String, libraryFolder: String?,
+                                         exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) -> FinderTarget {
+        if exists(path) { return .file(path) }
+        guard let root = libraryFolder.map({ URL(fileURLWithPath: $0).standardizedFileURL.path }) else { return .unavailable }
+        var dir = URL(fileURLWithPath: path).deletingLastPathComponent().standardizedFileURL
+        // Walk up, but never outside the folder the user added (that's all the sandbox lets us read anyway).
+        while dir.path == root || dir.path.hasPrefix(root + "/") {
+            if exists(dir.path) { return .formerFolder(dir.path) }
+            if dir.path == root { break }
+            dir = dir.deletingLastPathComponent()
+        }
+        return .unavailable
+    }
+
+    /// Reveals the original file in Finder (selected, in its folder). If it was moved or deleted,
+    /// opens the folder where it used to be instead, and says so.
     func showInFinder(_ item: MediaItem) {
-        guard ensureExists(item) else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([item.url])
+        switch Self.finderTarget(forFileAt: item.path, libraryFolder: folder(for: item)?.path) {
+        case .file(let path):
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+        case .formerFolder(let dir):
+            if item.availability == .available { markMissing(item) }
+            NSWorkspace.shared.open(URL(fileURLWithPath: dir, isDirectory: true))
+            alert = AppAlert(
+                title: "File not found",
+                message: "“\(item.fileName)” isn't in its folder anymore. It may have been moved, renamed, or deleted. \(AppConfig.appName) opened “\((dir as NSString).lastPathComponent)”, where it was, so you can look for it. Rescan (⌘R) to update your library.")
+        case .unavailable:
+            _ = ensureExists(item)
+        }
     }
 
     /// Checks the file is still there right before using it; if not, says so and marks it.

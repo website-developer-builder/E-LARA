@@ -64,12 +64,7 @@ struct DetailView: View {
         }
         // While the viewer is open, VoiceOver should only see the viewer.
         .accessibilityHidden(model.viewerItem != nil)
-        .overlay {
-            if let item = model.quickViewItem, model.viewerItem == nil {
-                QuickViewOverlay(item: item)
-                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
-            }
-        }
+        .overlay { QuickViewLayer() }
         .animation(.easeOut(duration: 0.12), value: model.isQuickViewOpen)
         .onChange(of: model.searchText) { model.closeQuickView() }
         .overlay {
@@ -122,6 +117,19 @@ struct LibraryToolbar: ToolbarContent {
                 }
                 .pickerStyle(.segmented)
                 .help("Switch between grid and list")
+
+                // Always enabled; with nothing selected it explains what to do instead of being greyed out.
+                Button {
+                    if let item = model.selectedItem {
+                        model.showInFinder(item)
+                    } else {
+                        model.alert = AppAlert(title: "Nothing selected",
+                                               message: "Select a photo, video, or song first, then click Show in Finder to see where its original file is.")
+                    }
+                } label: {
+                    Label("Show in Finder", systemImage: "folder")
+                }
+                .help("Show the selected item's original file in Finder (⇧⌘R)")
 
                 Button {
                     model.showInspector.toggle()

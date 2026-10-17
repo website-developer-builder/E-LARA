@@ -39,11 +39,12 @@ This generates JPG/PNG/HEIC/TIFF images (including a 8000×3000 panorama, duplic
 | Where | What |
 |---|---|
 | **Sidebar** | Home · All Media · Photos · Videos · Music · Favorites · Settings, with item counts. The bottom shows "N folders · N items", scan progress with **Cancel**, and any folder that needs attention. |
-| **Toolbar** | Add Folder · Rescan · Sort · Grid/List · Info · Search |
+| **Toolbar** | Add Folder · Rescan · Sort · Grid/List · Show in Finder · Info · Search |
 | **Cards** | Click to select · double-click (or Return) to open or play · right-click for Open/Play, Favorite, Show in Finder, Get Info. There is no Delete, by design. |
 | **Quick View** | Select anything and **tap Space** for a floating preview: photos show, videos and songs start playing. **Arrow keys** move to the next or previous item of any type, and the preview follows. Tap Space or Esc to close. **Hold Space** to peek: the preview shows while held and closes on release. Works in the grid, the list, and Home. Previews don't count as "played". |
 | **Viewer** | Double-click or Return. Photos fit the window, pinch or double-click to zoom, ← → for previous/next (photos, videos, and songs), Esc to go back. Videos use the standard macOS player controls. |
 | **Mini-player** | Music keeps playing while you browse: play/pause, previous/next, seek, volume. |
+| **Show in Finder** | Reveals the selected item's original file in Finder, selected in its folder: toolbar folder button, ⇧⌘R, right-click menu, details panel, Quick View, and the viewer. If the file was moved or deleted, E-LARA opens the folder it used to be in (or the nearest one still there, inside your library folder) and explains. If its drive is disconnected, it says so. |
 | **Drag & drop** | Drop folders from Finder onto the window to add them. |
 
 ### Keyboard shortcuts
@@ -101,7 +102,7 @@ ELARA/
 │   ├── Views/      ContentView, SidebarView, HomeView, LibraryView, MediaCardView, DetailsView,
 │   │               MediaViewer, QuickView, VideoContainerView, MiniPlayerView, SettingsView, EmptyStates
 │   └── Resources/  Assets (app icon, logo, accent color), ELARA.entitlements
-├── ELARATests/  54 unit + integration tests
+├── ELARATests/  60 unit + integration tests
 ├── scripts/        build.sh, test.sh, release.sh, make_fixtures.sh, MakeFixtures.swift, MakeIcon.swift
 └── TestFixtures/   generated sample media (git-ignored)
 ```
@@ -110,7 +111,7 @@ ELARA/
 
 ## Tests
 
-`scripts/test.sh` runs 54 XCTest cases inside the sandboxed app:
+`scripts/test.sh` runs 60 XCTest cases inside the sandboxed app:
 
 | Suite | Covers |
 |---|---|
@@ -121,10 +122,11 @@ ELARA/
 | `PlaybackTests` | Real AVPlayer: queue, play/pause, next/previous, auto-advance at the end, play history, missing file error, corrupt file error |
 | `ReliabilityTests` | Drive eject/reconnect, cancelled rescan doesn't delete, 5,000-file scan timing, 50,000-item search/sort timing |
 | `FormatTests` | Generates each format and checks classification, metadata, thumbnail, and playability |
+| `ShowInFinderTests` | Reveal the file when present; open its former folder when deleted; fall back to the nearest existing parent; never go above the library folder; nothing to show for a disconnected drive |
 | `RenameMigrationTests` | The old MediaHub library folder is moved to E-LARA intact, never overwrites an existing one, and the app reports the E-LARA name |
 | `QuickViewTests` | Space tap vs. hold (peek) timing, repeat handling, arrow movement/clamping, Quick View following the selection across photo → video → song, closing on section change |
 
-**Last run: 54 tests, 0 failures** (macOS 26.6, Xcode 26.6). Measured: 5,000-file scan 0.63 s (small synthetic files), unchanged rescan 0.15 s, 50k-item search+sort 0.17 s.
+**Last run: 60 tests, 0 failures** (macOS 26.6, Xcode 26.6). Measured: 5,000-file scan 0.63 s (small synthetic files), unchanged rescan 0.15 s, 50k-item search+sort 0.17 s.
 
 ### Formats actually verified
 | Kind | Verified | How |
@@ -149,6 +151,7 @@ What was actually exercised in the running app during development:
 - [x] Thumbnails load lazily while scrolling
 - [x] Search updates while typing; ⌘F focuses search; "No media found for '…'" state with **Clear Search**
 - [x] Select a card → Info panel shows kind, size, dimensions, dates, location, Show in Finder
+- [x] Show in Finder (0.4): ⇧⌘R and the toolbar button reveal the right file in grid and list view (confirmed in Finder); with nothing selected the button explains what to do; double-click still opens and single click only selects
 - [x] Double-click a photo → viewer; → goes to the next photo; Esc returns to the library with the selection kept
 - [x] Open a video → plays in-app with standard controls (after fixing the `VideoPlayer` crash described above)
 - [x] Play a song → mini-player appears; Controls ▸ Pause works; the player stays visible on Home; Recently Played appears
@@ -156,7 +159,7 @@ What was actually exercised in the running app during development:
 - [x] Light and Dark appearance (Light checked by forcing the app's appearance)
 - [x] Settings: folder list with status and item count, Rescan / Remove… / Add Folder, supported formats, thumbnail cache size and clear, privacy notes, version
 
-**Not yet exercised by hand (covered only by automated tests or not at all):** a physically ejected external drive (simulated in tests), revoking permission via System Settings, VoiceOver end to end, keyboard-only navigation of every screen, a Show in Finder click, drag-and-drop of a folder, very small window sizes.
+**Not yet exercised by hand (covered only by automated tests or not at all):** a physically ejected external drive (simulated in tests), revoking permission via System Settings, VoiceOver end to end, keyboard-only navigation of every screen, the Show in Finder "moved file" fallback with a real deleted file (covered by tests), drag-and-drop of a folder, very small window sizes.
 
 ---
 
@@ -182,5 +185,6 @@ What was actually exercised in the running app during development:
 | 4 Playback | `Services/PlaybackController.swift`, `Views/MediaViewer.swift`, `VideoContainerView.swift`, `MiniPlayerView.swift`; Controls menu; grid keyboard navigation; `PlaybackTests.swift` |
 | 5 Reliability | `App/WindowHelpers.swift` (⌘F); drive mount/unmount, drag & drop, memoized results, VoiceOver hiding behind the viewer; `ReliabilityTests.swift`, `FormatTests.swift` |
 | 6 Packaging | Placeholder app icon (later replaced), `scripts/release.sh`, `.gitignore`, this README. Version in the project's `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`. |
+| 0.4.0 Show in Finder | Toolbar button; moved/deleted files open their former folder (`AppModel.finderTarget`); Quick View isolated in `QuickViewLayer` so selection changes don't rebuild the toolbar; cards use one click handler with the system click count; `ShowInFinderTests.swift`. Version **0.4.0 (4)**. |
 | 0.3.0 E-LARA rebrand | Renamed app, project, target, and folders to E-LARA / ELARA; app icon and welcome logo cut from `../Branding/E-LARA-brand-sheet.png` by `scripts/MakeIcon.swift`; brand violet accent color; tagline "Your media, all together."; legacy data-folder migration; `RenameMigrationTests.swift`. Version **0.3.0 (3)**. |
 | 0.2.0 Quick View | `Models/SpacebarPeek.swift` (tap/hold logic, arrow movement), `Views/QuickView.swift` (overlay, audio preview, shared keyboard handling); viewer now steps through songs too; `QuickViewTests.swift`. Version **0.2.0 (2)**. |

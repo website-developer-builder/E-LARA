@@ -1,6 +1,20 @@
 import AVFoundation
 import SwiftUI
 
+/// Hosts Quick View in its own view so that only this layer re-renders when the selection
+/// changes. If the detail view read the selection itself, every click on a card would rebuild
+/// the window toolbar and the next click on a toolbar button would be lost (found in testing).
+struct QuickViewLayer: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let item = model.quickViewItem, model.viewerItem == nil {
+            QuickViewOverlay(item: item)
+                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        }
+    }
+}
+
 /// Floating preview of the selected item, opened with Space (Finder-style Quick View).
 /// The library underneath keeps keyboard focus, so ← → ↑ ↓ keep moving the selection
 /// and the preview follows. Space or Esc closes it; holding Space "peeks".

@@ -57,8 +57,13 @@ struct MediaCardView: View {
             .padding(.horizontal, 2)
         }
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { model.open(item) }
-        .simultaneousGesture(TapGesture().onEnded { model.selectedItemID = item.id })
+        // One click handler using macOS's own click count: 1 = select, 2 = open.
+        // (A separate double-tap gesture kept tracking the mouse after a single click and
+        // swallowed the next click elsewhere, e.g. on a toolbar button.)
+        .onTapGesture {
+            model.selectedItemID = item.id
+            if (NSApp.currentEvent?.clickCount ?? 1) >= 2 { model.open(item) }
+        }
         .contextMenu { MediaContextMenu(item: item) }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.mediaType.displayName): \(item.displayName)")

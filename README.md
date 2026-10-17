@@ -39,7 +39,8 @@ Requires **macOS 14 Sonoma or later**. Runs natively on Apple Silicon and Intel 
 | **Search** | ⌘F, then type part of a filename |
 | **Quick View** | Select an item and tap **Space** to preview; **← → ↑ ↓** to move between items; Space or Esc to close. Hold Space to peek |
 | **Open / play** | Double-click, or select and press Return |
-| **Details** | ⌘I shows size, dates, dimensions, duration, and location, plus **Show in Finder** |
+| **Show in Finder** | Select an item and click the folder button in the toolbar (or press ⇧⌘R, or right-click ▸ Show in Finder) to see its original file in Finder. If it was moved or deleted, E-LARA opens the folder where it used to be |
+| **Details** | ⌘I shows size, dates, dimensions, duration, and location |
 | **Update** | ⌘R rescans your folders for new or changed files |
 | **Remove a folder** | Settings ▸ Remove…. Only removes it from E-LARA; your files stay put |
 
@@ -54,7 +55,7 @@ git clone https://github.com/website-developer-builder/E-LARA.git
 cd E-LARA/ELARA
 open ELARA.xcodeproj      # then press ⌘R in Xcode
 ```
-Or from Terminal: `scripts/release.sh`, then `open dist/E-LARA.app`. Run the 54 tests with `scripts/test.sh`.
+Or from Terminal: `scripts/release.sh`, then `open dist/E-LARA.app`. Run the 60 tests with `scripts/test.sh`.
 
 Technical details (architecture, sandbox and folder-permission design, tests, known limitations): **[ELARA/README.md](ELARA/README.md)**.
 
