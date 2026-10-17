@@ -1,6 +1,6 @@
-MediaHub/build/
-MediaHub/dist/
-MediaHub/TestFixtures/Media/
+ELARA/build/
+ELARA/dist/
+ELARA/TestFixtures/Media/
 xcuserdata/
 *.xcuserstate
 .DS_Store
