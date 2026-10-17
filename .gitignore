@@ -1,0 +1,6 @@
+MediaHub/build/
+MediaHub/dist/
+MediaHub/TestFixtures/Media/
+xcuserdata/
+*.xcuserstate
+.DS_Store
