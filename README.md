@@ -19,7 +19,7 @@ Requires **macOS 14 Sonoma or later**. Runs natively on Apple Silicon and Intel 
 
 ## Download & install
 
-1. Download **`E-LARA-0.3.0.zip`** from the [latest release](../../releases/latest).
+1. Download **`E-LARA-0.4.0.zip`** from the [latest release](../../releases/latest).
 2. Double-click the zip to unzip it, then drag **E-LARA.app** into your **Applications** folder.
 3. Open it. The first time, macOS will warn you, because this free app isn't signed with a paid Apple Developer ID:
    - **macOS 15 Sequoia and later:** click **Done** on the warning, then open **System Settings ▸ Privacy & Security**, scroll down, and click **Open Anyway** next to "E-LARA". Confirm, and enter your password if asked.
